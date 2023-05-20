@@ -2,13 +2,20 @@
 
 # Test - Issuing a request to a CoAP server in the WSN
 
-ip = "fd00::201:1:1:1"
-port = 5683
-server = CoAPServer(ip, port)
+from coapthon.client.helperclient import HelperClient 
+from coapthon.utils import parse_uri
 
-try:
-    server.listen(10)
-except KeyboardInterrupt: 
-    print("Server Shutdown") 
-    server.close() 
-    print("Exiting...")
+class coapActuatorHandler:
+
+    port = 5683
+    path_cooling = "/cooling"
+    path_compressor = "/compressor"
+
+    def cooling_actuator_send(self, address, command, wagon):
+        print("coapActuatoHandler - sending cooling command \n")
+        client = HelperClient(server=(address, self.port))
+        response = client.get(self.path_cooling)
+        print(response.pretty_print())
+        client.stop()
+
+
