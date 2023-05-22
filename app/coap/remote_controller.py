@@ -15,7 +15,11 @@ class coapActuatorHandler:
         print("coapActuatoHandler - sending cooling command \n")
         client = HelperClient(server=(address, self.port))
         response = client.get(self.path_cooling)
+        if (response == None):
+            print("coapActuatorHandler - no response from actuator")
+            return
+
         print(response.pretty_print())
         client.stop()
-
+        return response
 

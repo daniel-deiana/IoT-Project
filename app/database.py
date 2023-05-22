@@ -19,3 +19,18 @@ class Database:
                                               database="iot",
                                               cursorclass=pymysql.cursors.DictCursor)
             return self.connection
+    
+    # execute a query on database
+    def execute_query(self, querystring, parameters):
+
+        with self.connection:
+            with self.connection.cursor() as cursor:
+                cursor.execute(querystring,parameters)
+                result = cursor.fetchone();
+        
+            self.connection.commit();
+
+        return result
+
+
+

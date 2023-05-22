@@ -101,7 +101,7 @@ static char client_id[BUFFER_SIZE];
 static char pub_topic[BUFFER_SIZE];
 static char sub_topic[BUFFER_SIZE];
 
-static float value = BASE_TEMP ;
+static int value = BASE_TEMP ;
 
 // Periodic timer to check the state of the MQTT client
 #define STATE_MACHINE_PERIODIC     (CLOCK_SECOND >> 1)
@@ -228,8 +228,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
 
   // initialize rand 
   srand(time(0));
-  value = BASE_TEMP;
-
+ 
   /* Main loop */
   while(1) {
 
@@ -275,7 +274,8 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
 			// Publish something
 		    sprintf(pub_topic, "%s", "brake_temp");
 			
-			sprintf(app_buffer, "{\"node_id\": %d, \"temperature\": %f}", node_id, value);
+		    	value = 51;
+			sprintf(app_buffer, "{\"node_id\": %d, \"temperature\": %d}", node_id, value);
 				
 			mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer,
                strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
@@ -285,7 +285,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
 		   // Recover from error
 		}
 		
-		etimer_set(&periodic_timer, STATE_MACHINE_PERIODIC);
+		etimer_set(&periodic_timer, DEFAULT_PUBLISH_INTERVAL);
       
     }
 

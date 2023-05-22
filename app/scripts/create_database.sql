@@ -11,11 +11,12 @@ CREATE TABLE wagon (
 );
 
 CREATE TABLE sensor_data (
-	sensor_id int NOT NULL PRIMARY KEY,
+	sensor_id int,
+	timestamp bigint,
 	type varchar(25),
 	value float,
-	timestamp TIMESTAMP,
-	wagon int 
+	wagon int,
+        primary key(sensor_id,timestamp)	
 );
 
 CREATE TABLE actuator (

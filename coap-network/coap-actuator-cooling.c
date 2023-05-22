@@ -42,7 +42,7 @@
 #define LOG_LEVEL LOG_LEVEL_APP
 
 /* Declare and auto-start this file's process */
-PROCESS(contiki_ng_br_coap_server, "Coap Cooling Actuator");
+PROCESS(coap_cooling_actuator, "Coap Cooling Actuator");
 AUTOSTART_PROCESSES(&coap_cooling_actuator);
 extern coap_resource_t res_cooling;
 /*---------------------------------------------------------------------------*/
@@ -50,7 +50,6 @@ PROCESS_THREAD(coap_cooling_actuator, ev, data){
   PROCESS_BEGIN();
 
   LOG_INFO("Coap Brake cooling Actuator started\n");
-  coap_activate_resource(&res_cooling "cooling");
+  coap_activate_resource(&res_cooling, "cooling");
   PROCESS_END();
 }
-
