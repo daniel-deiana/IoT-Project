@@ -33,16 +33,24 @@ def on_message_temp(client, userdata, msg):
     
     #Retrieve Actuator address and current state
     result = db.get_actuator_ip(data["node_id"])
+    thresholds = db.get_wagon_thresholds(data["node_id"])
     
     print("mqttOnMessage - ip address of actuator is:" + str(result))
 
-    coap_handler = coapActuatorHandler();
-    if (data["temperature"] > 50 and result["state"] == "cooling"):
-        response = coap_handler.cooling_actuator_send(result["ip_address"],"activate","o")
-        #Update the actuator state
-        state="cooling"
-        db.set_actuator_state(result["ip_address"],state)
+    coap_handler = coapActuatorHandler()
+    if (data["temperature"] > thresholds["max_br_temp"] and result["state"] != "cooling"):
+        command = "activate"
+        new_state="cooling"
+    elif(data["temperature"] < thresholds["max_br_temp"] and result["state"] != "idle"):
+        command = "deactivate"
+        new_state = "idle"
+    else:
+        # Do nothing 
+        return 
 
+    # Send command to actuator    
+    response = coap_handler.cooling_actuator_send(result["ip_address"],command,"o")
+    db.set_actuator_state(result["ip_address"],new_state)
 
 def mqtt_client_temp():
     client_temp = mqtt.Client()
@@ -54,7 +62,8 @@ def mqtt_client_temp():
 if __name__ == "__main__":
     
     #Run threads
-    thread_temp = Thread(target=mqtt_client_temp)
+    thread_temp = Thread(target = mqtt_client_temp)
     thread_temp.start()
     
+
 

@@ -7,7 +7,9 @@ CREATE DATABASE iot;
 USE iot;
 
 CREATE TABLE wagon (
-        wagon_id int NOT NULL PRIMARY KEY
+        wagon_id int NOT NULL PRIMARY KEY,
+		max_br_temp int,
+		max_consumption int
 );
 
 CREATE TABLE sensor_data (

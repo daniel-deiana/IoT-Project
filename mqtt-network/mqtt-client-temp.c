@@ -194,8 +194,7 @@ mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data)
 }
 
 static bool
-have_connectivity(void)
-{
+have_connectivity(void) {
   if(uip_ds6_get_global(ADDR_PREFERRED) == NULL ||
      uip_ds6_defrt_choose() == NULL) {
     return false;
@@ -271,12 +270,12 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
 		  }
 			  
 		if(state == STATE_SUBSCRIBED){
-			// Publish something
-		    sprintf(pub_topic, "%s", "brake_temp");
+		  // Publish something
+		  sprintf(pub_topic, "%s", "brake_temp");
 			
-		    	value = 51;
+		  value = 51;
 			sprintf(app_buffer, "{\"node_id\": %d, \"temperature\": %d}", node_id, value);
-				
+		
 			mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer,
                strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
 		
