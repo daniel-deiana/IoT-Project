@@ -1,6 +1,8 @@
 import paho.mqtt.client as mqtt
 import json
 import time
+import xml.etree.ElementTree as et
+
 from threading import Thread
 
 # import sys module
@@ -12,6 +14,43 @@ from database import Database
 from db_manager import dbManager
 from coap.remote_controller import coapActuatorHandler
 
+
+def on_connect_consumption(client, userdata, flags, rc):
+    print("Connected with result code "+str(rc))
+
+    # Subscribing in on_connect() means that if we lose the connection and
+    # reconnect then subscriptions will be renewed.
+    client.subscribe("consumption")
+
+def on_message_consumption(client, userdata, msg):
+    db = dbManager()
+    print(msg.topic + " " + str(msg.payload) + str(userdata))
+    
+    myxml = et.fromstring(msg.pyaload)
+    node = myxml[0].text
+    wagon = myxml[1].text
+    cons = myxml[2].text
+    
+    result = db.get_actuator_ip(node)
+    thresholds = db.get_wagon_thresholds(wagon)
+
+    print("mqttOnMessage - ip address of actuator is:" + str(result))
+
+    coap_handler = coapActuatorHandler()
+    if (cons > thresholds["max_consumption"] and result["state"] != "backup"):
+        command = "on"
+        new_state="backup"
+    elif(cons < thresholds["max_consumption"] and result["state"] != "standard"):
+        command = "off"
+        new_state = "standard"
+    else:
+        return  
+
+    # Send command to actuator    
+    response = coap_handler.cooling_actuator_send(result["ip_address"],command,"o")
+    db.set_actuator_state(result["ip_address"],new_state)
+
+
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect_temp(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
@@ -22,26 +61,30 @@ def on_connect_temp(client, userdata, flags, rc):
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message_temp(client, userdata, msg):
+    
     db = dbManager()
     print(msg.topic + " " + str(msg.payload) + str(userdata))
     
-    #Handle sensor data
-    data = json.loads(msg.payload)
+    myxml = et.fromstring(msg.pyaload)
+    
+    node = myxml[0].text
+    wagon = myxml[1].text
+    temp = myxml[2].text
     
     #Store in database
-    db.store_sensor_data(data["node_id"],"brake_temperature",data["temperature"],time.time())
+    db.store_sensor_data(node,"brake_temperature",temp,time.time())
     
     #Retrieve Actuator address and current state
-    result = db.get_actuator_ip(data["node_id"])
-    thresholds = db.get_wagon_thresholds(data["node_id"])
+    result = db.get_actuator_ip(node)
+    thresholds = db.get_wagon_thresholds(node)
     
     print("mqttOnMessage - ip address of actuator is:" + str(result))
 
     coap_handler = coapActuatorHandler()
-    if (data["temperature"] > thresholds["max_br_temp"] and result["state"] != "cooling"):
+    if (temp > thresholds["max_br_temp"] and result["state"] != "cooling"):
         command = "activate"
         new_state="cooling"
-    elif(data["temperature"] < thresholds["max_br_temp"] and result["state"] != "idle"):
+    elif(temp < thresholds["max_br_temp"] and result["state"] != "idle"):
         command = "deactivate"
         new_state = "idle"
     else:
@@ -64,6 +107,6 @@ if __name__ == "__main__":
     #Run threads
     thread_temp = Thread(target = mqtt_client_temp)
     thread_temp.start()
-    
+        
 
 

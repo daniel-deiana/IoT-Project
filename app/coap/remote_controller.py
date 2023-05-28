@@ -12,9 +12,9 @@ class coapActuatorHandler:
     path_compressor = "/compressor"
 
     def cooling_actuator_send(self, address, command, wagon):
-        print("coapActuatoHandler - sending cooling command \n")
+        print("coapActuatoHandler - sending command \n")
         client = HelperClient(server=(address, self.port))
-        response = client.post(self.path_cooling + "?action="+command,'action=activate')
+        response = client.post(self.path_cooling,'action=' + command)
         if (response == None):
             print("coapActuatorHandler - no response from actuator")
             return

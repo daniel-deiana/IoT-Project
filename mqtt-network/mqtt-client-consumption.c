@@ -73,15 +73,15 @@ static const char *broker_ip = MQTT_CLIENT_BROKER_IP_ADDR;
 /* Various states */
 static uint8_t state;
 
-#define STATE_INIT    		  0
-#define STATE_NET_OK    	  1
+#define STATE_INIT          0
+#define STATE_NET_OK        1
 #define STATE_CONNECTING      2
 #define STATE_CONNECTED       3
 #define STATE_SUBSCRIBED      4
 #define STATE_DISCONNECTED    5
 
-#define MIN_TEMP 30
-#define MAX_TEMP 80
+#define MIN_CONS 120
+#define MAX_CONS 230
 
 /*---------------------------------------------------------------------------*/
 PROCESS_NAME(mqtt_client_process);
@@ -128,8 +128,8 @@ PROCESS(mqtt_client_process, "MQTT Client");
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
-static void generate_random_temp(){
-  return (rand() % (MAX_TEMP - MIN_TEMP)) + MIN_TEMP;
+static void generate_random_consumption(){
+  return (rand() % (MAX_CONS - MIN_CONS)) + MIN_CONS;
 }
 
 static void
@@ -141,7 +141,7 @@ pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk,
 
   if(strcmp(topic, "1/consumption/freq") == 0) {
     printf("Received Actuator command\n");
-	  printf("Il dato pubblicato dalla cloud application e' %s\n", chunk);
+    printf("Il dato pubblicato dalla cloud application e' %s\n", chunk);
     // Do something :)
     return;
   }
@@ -222,12 +222,12 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
                      linkaddr_node_addr.u8[2], linkaddr_node_addr.u8[5],
                      linkaddr_node_addr.u8[6], linkaddr_node_addr.u8[7]);
 
-  // Broker registration					 
+  // Broker registration           
   mqtt_register(&conn, &mqtt_client_process, client_id, mqtt_event,
                   MAX_TCP_SEGMENT_SIZE);
-				  
+          
   state=STATE_INIT;
-				    
+            
   // Initialize periodic timer to check the status 
   etimer_set(&periodic_timer, STATE_MACHINE_PERIODIC);
 
@@ -240,64 +240,64 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
     PROCESS_YIELD();
 
     if((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || 
-	      ev == PROCESS_EVENT_POLL){
-			  			  
-		  if(state==STATE_INIT){
-			 if(have_connectivity()==true)  
-				 state = STATE_NET_OK;
-		  } 
-		  
-		  if(state == STATE_NET_OK){
-			  // Connect to MQTT server
-			  printf("Connecting!\n");
-			  
-			  memcpy(broker_address, broker_ip, strlen(broker_ip));
-			  
-			  mqtt_connect(&conn, broker_address, DEFAULT_BROKER_PORT,
-						   (DEFAULT_PUBLISH_INTERVAL) / CLOCK_SECOND,
-						   MQTT_CLEAN_SESSION_ON);
-			  state = STATE_CONNECTING;
-		  }
-		  
-		  if(state==STATE_CONNECTED){
-		  
-			  // Subscribe to a topic
-			  strcpy(sub_topic,"1/consumption/freq");
+        ev == PROCESS_EVENT_POLL){
+                
+      if(state==STATE_INIT){
+       if(have_connectivity()==true)  
+         state = STATE_NET_OK;
+      } 
+      
+      if(state == STATE_NET_OK){
+        // Connect to MQTT server
+        printf("Connecting!\n");
+        
+        memcpy(broker_address, broker_ip, strlen(broker_ip));
+        
+        mqtt_connect(&conn, broker_address, DEFAULT_BROKER_PORT,
+               (DEFAULT_PUBLISH_INTERVAL) / CLOCK_SECOND,
+               MQTT_CLEAN_SESSION_ON);
+        state = STATE_CONNECTING;
+      }
+      
+      if(state==STATE_CONNECTED){
+      
+        // Subscribe to a topic
+        strcpy(sub_topic,"1/consumption/freq");
 
-			  status = mqtt_subscribe(&conn, NULL, sub_topic, MQTT_QOS_LEVEL_0);
+        status = mqtt_subscribe(&conn, NULL, sub_topic, MQTT_QOS_LEVEL_0);
 
-			  printf("Subscribing!\n");
-			  if(status == MQTT_STATUS_OUT_QUEUE_FULL) {
-				LOG_ERR("Tried to subscribe but command queue was full!\n");
-				PROCESS_EXIT();
-			  }
-			  
-			  state = STATE_SUBSCRIBED;
-		  }
-			  
-		if(state == STATE_SUBSCRIBED){
-		  // Publish something
-		  sprintf(pub_topic, "%s", "brake_temp");
-			
-      if (value >= MIN_TEMP)
-		    value = generate_random_temp();
-			sprintf(app_buffer, "<?xml version='1.0' encoding='UTF-8' ?><sensor_data><node_id>%s</node_id><wagon_id>1</wagon_id><temperature>%d</temperature></sensor_data>", node_id, value);
-		
-			mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer,
+        printf("Subscribing!\n");
+        if(status == MQTT_STATUS_OUT_QUEUE_FULL) {
+          LOG_ERR("Tried to subscribe but command queue was full!\n");
+          PROCESS_EXIT();
+        }
+        
+        state = STATE_SUBSCRIBED;
+      }
+        
+    if(state == STATE_SUBSCRIBED){
+      // Publish something
+      sprintf(pub_topic, "%s", "consumption");
+      
+      if (value >= MIN_CONS)
+        value = generate_random_consumption();
+
+      sprintf(app_buffer, "<?xml version='1.0' encoding='UTF-8' ?><sensor_data><node_id>%s</node_id><wagon_id>1</wagon_id><consumption>%d</consumption></sensor_data>", node_id, value);
+    
+      mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer,
                strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
-		
-		} else if ( state == STATE_DISCONNECTED ){
-		   LOG_ERR("Disconnected form MQTT broker\n");	
-		   // Recover from error
+    
+    } else if ( state == STATE_DISCONNECTED ){
+       LOG_ERR("Disconnected form MQTT broker\n");  
+       // Recover from error
        state = STATE_INIT;
-		}
+    }
 
-		etimer_set(&periodic_timer, DEFAULT_PUBLISH_INTERVAL);
+    etimer_set(&periodic_timer, DEFAULT_PUBLISH_INTERVAL);
       
     }
 
   }
-
   PROCESS_END();
 }
 /*---------------------------------------------------------------------------*/
