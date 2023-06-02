@@ -14,6 +14,12 @@ from database import Database
 from db_manager import dbManager
 from coap.remote_controller import coapActuatorHandler
 
+def change_cons_sensing_freq(wagon,freq):
+    client = mqtt.Client()
+    client.connect("fd00::1", 1883, 60)
+    msg = "{frequency :" + str(freq) + "}"
+    client.publish(wagon+"/consumption/frequency",msg)
+
 
 def on_connect_consumption(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
@@ -25,29 +31,28 @@ def on_connect_consumption(client, userdata, flags, rc):
 def on_message_consumption(client, userdata, msg):
     db = dbManager()
     print(msg.topic + " " + str(msg.payload) + str(userdata))
-    
-    myxml = et.fromstring(msg.pyaload)
+    myxml = et.fromstring(msg.payload)
     node = myxml[0].text
     wagon = myxml[1].text
-    cons = myxml[2].text
-    
-    result = db.get_actuator_ip(node)
+    cons = int(myxml[2].text)
+    timestamp = int(myxml[3].text)
+
+    db.store_sensor_data(node,"consumption",cons,timestamp)
+    result = db.get_actuator_ip(2,"energy")
     thresholds = db.get_wagon_thresholds(wagon)
-
-    print("mqttOnMessage - ip address of actuator is:" + str(result))
-
-    coap_handler = coapActuatorHandler()
+    # print("mqttOnMessage - ip address of actuator is:" + str(result))
+    coap_handler = coapActuatorHandler("energy")
     if (cons > thresholds["max_consumption"] and result["state"] != "backup"):
-        command = "on"
+        command = "open"
         new_state="backup"
     elif(cons < thresholds["max_consumption"] and result["state"] != "standard"):
-        command = "off"
+        command = "shutdown"
         new_state = "standard"
     else:
         return  
-
-    # Send command to actuator    
-    response = coap_handler.cooling_actuator_send(result["ip_address"],command,"o")
+    # Send command to actuator  
+    cmdstring = "<?xml version='1.0' encoding='UTF-8'?><cmd> " + command + " </cmd>" 
+    response = coap_handler.cooling_actuator_send(result["ip_address"],cmdstring)
     db.set_actuator_state(result["ip_address"],new_state)
 
 
@@ -61,26 +66,20 @@ def on_connect_temp(client, userdata, flags, rc):
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message_temp(client, userdata, msg):
-    
     db = dbManager()
     print(msg.topic + " " + str(msg.payload) + str(userdata))
-    
-    myxml = et.fromstring(msg.pyaload)
-    
+    myxml = et.fromstring(msg.payload)
     node = myxml[0].text
     wagon = myxml[1].text
-    temp = myxml[2].text
-    
+    temp = int(myxml[2].text)
+    timestamp = int(myxml[3].text)
     #Store in database
-    db.store_sensor_data(node,"brake_temperature",temp,time.time())
-    
+    db.store_sensor_data(node,"brake_temperature",temp,timestamp)
     #Retrieve Actuator address and current state
-    result = db.get_actuator_ip(node)
-    thresholds = db.get_wagon_thresholds(node)
-    
+    result = db.get_actuator_ip(node,"brakes")
+    thresholds = db.get_wagon_thresholds(wagon)
     print("mqttOnMessage - ip address of actuator is:" + str(result))
-
-    coap_handler = coapActuatorHandler()
+    coap_handler = coapActuatorHandler("cooling")
     if (temp > thresholds["max_br_temp"] and result["state"] != "cooling"):
         command = "activate"
         new_state="cooling"
@@ -90,10 +89,18 @@ def on_message_temp(client, userdata, msg):
     else:
         # Do nothing 
         return 
-
+    
     # Send command to actuator    
-    response = coap_handler.cooling_actuator_send(result["ip_address"],command,"o")
+    cmdstring = "<?xml version='1.0' encoding='UTF-8' ?><cmd> "+command+" </cmd>"
+    response = coap_handler.cooling_actuator_send(result["ip_address"],cmdstring)
     db.set_actuator_state(result["ip_address"],new_state)
+
+def mqtt_client_co():
+    client_co = mqtt.Client()
+    client_co.on_connect = on_connect_consumption
+    client_co.on_message = on_message_consumption
+    client_co.connect("fd00::1", 1883, 60)
+    client_co.loop_forever()
 
 def mqtt_client_temp():
     client_temp = mqtt.Client()
@@ -107,6 +114,7 @@ if __name__ == "__main__":
     #Run threads
     thread_temp = Thread(target = mqtt_client_temp)
     thread_temp.start()
-        
+    thread_co = Thread(target = mqtt_client_co)
+    thread_co.start()
 
 

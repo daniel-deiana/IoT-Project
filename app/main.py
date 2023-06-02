@@ -1,5 +1,6 @@
 from threading import Thread
 from db_manager import dbManager
+from mqtt.mqtt_collector import change_cons_sensing_freq
 import os
 
 def print_cmd_list():
@@ -9,18 +10,23 @@ def print_cmd_list():
     print("---")
 
 
+#def handle_print_state():
+
+#def handle_change_parameters():
+
+#def handle
+
+
 def handle_command(cmd):
     db = dbManager()
 
     if cmd == "print state":
         wagon_index = input("select wagon >>")
         state = db.get_wagon_status(wagon_index)
-        
         if (state == None):
             print("Remote control - wagon does not exist!")
         else:
             print(state)
-
     elif cmd == "change parameters":
         wagon_index = input("select wagon >>")
         state = db.get_wagon_status(wagon_index)
@@ -32,6 +38,16 @@ def handle_command(cmd):
         result = db.set_wagon_thresholds(max_temp,max_consumption,wagon_index)
         if result != None:
             print("New thresholds for wagon " + wagon_index + "Set")
+    elif cmd == "change energy sensing frequency":
+        wagon_index = input("select wagon >>")
+        state = db.get_wagon_status(wagon_index)
+        if state == None:
+            print("Remote control - wagon does not exist!")
+            return
+        freq = input("insert freq")
+        change_cons_sensing_freq(wagon_index,freq)
+        
+        
     else: 
         print("Command not recognized - Check syntax")
         print_cmd_list()

@@ -8,13 +8,15 @@ from coapthon.utils import parse_uri
 class coapActuatorHandler:
 
     port = 5683
-    path_cooling = "/cooling"
-    path_compressor = "/compressor"
+    path = ""
+    def __init__ (self,res):
+        self.path = res
 
-    def cooling_actuator_send(self, address, command, wagon):
+
+    def cooling_actuator_send(self, address, command):
         print("coapActuatoHandler - sending command \n")
         client = HelperClient(server=(address, self.port))
-        response = client.post(self.path_cooling,'action=' + command)
+        response = client.post(self.path,command)
         if (response == None):
             print("coapActuatorHandler - no response from actuator")
             return

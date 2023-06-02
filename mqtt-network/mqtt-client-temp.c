@@ -42,6 +42,7 @@
 #include "os/sys/log.h"
 #include "mqtt-client.h"
 #include <sys/node-id.h>
+#include <sys/time.h>
 
 
 #include <time.h>
@@ -128,7 +129,7 @@ PROCESS(mqtt_client_process, "MQTT Client");
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
-static void generate_random_temp(){
+static int generate_random_temp(){
   return (rand() % (MAX_TEMP - MIN_TEMP)) + MIN_TEMP;
 }
 
@@ -281,7 +282,10 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
 			
       if (value >= MIN_TEMP)
 		    value = generate_random_temp();
-			sprintf(app_buffer, "<?xml version='1.0' encoding='UTF-8' ?><sensor_data><node_id>%s</node_id><wagon_id>1</wagon_id><temperature>%d</temperature></sensor_data>", node_id, value);
+
+      struct timeval tv;
+      gettimeofday(&tv,NULL);
+			sprintf(app_buffer, "<?xml version='1.0' encoding='UTF-8' ?><sensor_data><node_id>%d</node_id><wagon_id>1</wagon_id><temperature>%d</temperature><timestamp>%lu</timestamp></sensor_data>", node_id, value, tv.tv_sec);
 		
 			mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer,
                strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);

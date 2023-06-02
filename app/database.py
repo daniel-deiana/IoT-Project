@@ -21,14 +21,16 @@ class Database:
             return self.connection
     
     # execute a query on database
-    def execute_query(self, querystring, parameters):
+    def execute_query(self, querystring, parameters, mode):
 
         with self.connection:
             with self.connection.cursor() as cursor:
                 cursor.execute(querystring,parameters)
-                result = cursor.fetchone();
-        
-            self.connection.commit();
+                if mode == 0:
+                    result = cursor.fetchone()
+                else:
+                    result = cursor.fetchall()
+            self.connection.commit()
 
         return result
 

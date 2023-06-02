@@ -43,7 +43,7 @@
 #include "mqtt-client.h"
 #include <sys/node-id.h>
 
-
+#include <sys/time.h>
 #include <time.h>
 #include <string.h>
 #include <strings.h>
@@ -102,7 +102,10 @@ static char client_id[BUFFER_SIZE];
 static char pub_topic[BUFFER_SIZE];
 static char sub_topic[BUFFER_SIZE];
 
-static int value = MIN_TEMP ;
+static int value = MIN_CONS ;
+
+#define MIN_FREQ 1
+#define MAX_FREQ 5
 
 // Periodic timer to check the state of the MQTT client
 #define STATE_MACHINE_PERIODIC     (CLOCK_SECOND >> 1)
@@ -128,10 +131,18 @@ PROCESS(mqtt_client_process, "MQTT Client");
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
 
-static void generate_random_consumption(){
+static int generate_random_consumption(){
   return (rand() % (MAX_CONS - MIN_CONS)) + MIN_CONS;
 }
 
+static int PUBLISH_INTERVAL = DEFAULT_PUBLISH_INTERVAL;
+void parseAndConvert(const uint8_t* data, size_t dataSize, char* outputString, size_t outputSize) {
+    size_t i;
+    for (i = 0; i < dataSize && i < outputSize - 1; i++) {
+        outputString[i] = (char)data[i];
+    }
+    outputString[i] = '\0'; 
+}
 static void
 pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk,
             uint16_t chunk_len)
@@ -139,10 +150,20 @@ pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk,
   printf("Pub Handler: topic='%s' (len=%u), chunk_len=%u\n", topic,
           topic_len, chunk_len);
 
-  if(strcmp(topic, "1/consumption/freq") == 0) {
-    printf("Received Actuator command\n");
-    printf("Il dato pubblicato dalla cloud application e' %s\n", chunk);
-    // Do something :)
+  if(strcmp(topic, "1/consumption/frequency") == 0) {
+    char str[25] = "";
+    parseAndConvert(chunk, (size_t)chunk_len, str, 25);
+    int frequency = 0;
+    sscanf(str,"{frequency :%d}", &frequency);
+    printf("la stringa e %s",str);
+
+    if (frequency >= MIN_FREQ && frequency <= MAX_FREQ){
+      PUBLISH_INTERVAL = DEFAULT_PUBLISH_INTERVAL/frequency;
+      printf("cambiata la frequenza in %d\n",PUBLISH_INTERVAL);
+      }
+    else 
+      printf("Valori errati\n");
+
     return;
   }
 }
@@ -262,7 +283,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
       if(state==STATE_CONNECTED){
       
         // Subscribe to a topic
-        strcpy(sub_topic,"1/consumption/freq");
+        strcpy(sub_topic,"1/consumption/frequency");
 
         status = mqtt_subscribe(&conn, NULL, sub_topic, MQTT_QOS_LEVEL_0);
 
@@ -282,7 +303,9 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
       if (value >= MIN_CONS)
         value = generate_random_consumption();
 
-      sprintf(app_buffer, "<?xml version='1.0' encoding='UTF-8' ?><sensor_data><node_id>%s</node_id><wagon_id>1</wagon_id><consumption>%d</consumption></sensor_data>", node_id, value);
+      struct timeval tv;
+      gettimeofday(&tv,NULL);
+      sprintf(app_buffer, "<?xml version='1.0' encoding='UTF-8' ?><sensor_data><node_id>%d</node_id><wagon_id>1</wagon_id><consumption>%d</consumption><timestamp>%lu</timestamp></sensor_data>", node_id, value,tv.tv_sec);
     
       mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer,
                strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
@@ -293,7 +316,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
        state = STATE_INIT;
     }
 
-    etimer_set(&periodic_timer, DEFAULT_PUBLISH_INTERVAL);
+    etimer_set(&periodic_timer,PUBLISH_INTERVAL);
       
     }
 
