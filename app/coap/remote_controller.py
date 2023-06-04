@@ -18,9 +18,10 @@ class coapActuatorHandler:
         client = HelperClient(server=(address, self.port))
         response = client.post(self.path,command)
         if (response == None):
-            print("coapActuatorHandler - no response from actuator")
+            print("coapActuatorHandler - no response from actuator")    
             return
-
+        
+        print("codice della risposta e:" + str(response.code))
         print(response.pretty_print())
         client.stop()
         return response

@@ -1,7 +1,7 @@
 #include "contiki.h"
 #include "coap-engine.h"
 #include "dev/leds.h"
-
+#include "util.h"
 #include <string.h>
 #define CMD_LEN 128
 /* Log configuration */
@@ -11,14 +11,6 @@
 static int status = 0;
 
 static void res_post_put_handler(coap_message_t *request, coap_message_t *response, uint8_t *buffer, uint16_t preferred_size, int32_t *offset);
-
-void parseAndConvert(const uint8_t* data, size_t dataSize, char* outputString, size_t outputSize) {
-    size_t i;
-    for (i = 0; i < dataSize && i < outputSize - 1; i++) {
-        outputString[i] = (char)data[i];
-    }
-    outputString[i] = '\0'; 
-}
 
 /* A simple actuator example, depending on the color query parameter and post variable mode, corresponding led is activated or deactivated */
 RESOURCE(res_energy,
@@ -41,7 +33,6 @@ res_post_put_handler(coap_message_t *request, coap_message_t *response,
 
   	int len = coap_get_payload(request,&chunk);
     parseAndConvert(chunk,len,str,CMD_LEN);
-
 
     printf("valore del payload %s",chunk);
 

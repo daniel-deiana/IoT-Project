@@ -34,12 +34,16 @@
 #include "net/ipv6/uip.h"
 #include "net/ipv6/uip-icmp6.h"
 #include "net/ipv6/sicslowpan.h"
+#include "net/ipv6/uip.h"
+#include "net/ipv6/uip-ds6.h"
+#include "net/ipv6/uip-debug.h"
 #include "sys/etimer.h"
 #include "sys/ctimer.h"
 #include "lib/sensors.h"
 #include "dev/button-hal.h"
 #include "dev/leds.h"
 #include "os/sys/log.h"
+#include "os/dev/button-hal.h"
 #include "mqtt-client.h"
 #include <sys/node-id.h>
 #include <sys/time.h>
@@ -58,7 +62,7 @@
 
 /*---------------------------------------------------------------------------*/
 /* MQTT broker address. */
-#define MQTT_CLIENT_BROKER_IP_ADDR "fd00::1"
+#define MQTT_CLIENT_BROKER_IP_ADDR "fd00::f6ce:36bd:4f05:c3a3"
 
 static const char *broker_ip = MQTT_CLIENT_BROKER_IP_ADDR;
 
@@ -83,6 +87,7 @@ static uint8_t state;
 
 #define MIN_TEMP 30
 #define MAX_TEMP 80
+#define MAX_ANOMALY 120
 
 /*---------------------------------------------------------------------------*/
 PROCESS_NAME(mqtt_client_process);
@@ -119,6 +124,8 @@ static char app_buffer[APP_BUFFER_SIZE];
 /*---------------------------------------------------------------------------*/
 static struct mqtt_message *msg_ptr = 0;
 static struct mqtt_connection conn;
+static struct ctimer anomaly_timer;
+static bool anomaly = false;
 // static struct ctimer anomaly_timer;
 mqtt_status_t status;
 
@@ -128,6 +135,14 @@ char broker_address[CONFIG_IP_ADDR_STR_LEN];
 PROCESS(mqtt_client_process, "MQTT Client");
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
+
+static void callback_ctimer(){
+  anomaly = false;
+}
+
+static int generate_anomaly(){
+  return (rand() % (MAX_ANOMALY - MAX_TEMP) + MAX_TEMP);
+}
 
 static int generate_random_temp(){
   return (rand() % (MAX_TEMP - MIN_TEMP)) + MIN_TEMP;
@@ -238,6 +253,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
   /* Main loop */
   while(1) {
 
+  
     PROCESS_YIELD();
 
     if((ev == PROCESS_EVENT_TIMER && data == &periodic_timer) || 
@@ -263,7 +279,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
 		  if(state==STATE_CONNECTED){
 		  
 			  // Subscribe to a topic
-			  strcpy(sub_topic,"1/consumption/freq");
+			  strcpy(sub_topic," ");
 
 			  status = mqtt_subscribe(&conn, NULL, sub_topic, MQTT_QOS_LEVEL_0);
 
@@ -280,12 +296,14 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
 		  // Publish something
 		  sprintf(pub_topic, "%s", "brake_temp");
 			
-      if (value >= MIN_TEMP)
+      if (!anomaly)
 		    value = generate_random_temp();
+      else 
+        value = generate_anomaly();
 
       struct timeval tv;
       gettimeofday(&tv,NULL);
-			sprintf(app_buffer, "<?xml version='1.0' encoding='UTF-8' ?><sensor_data><node_id>%d</node_id><wagon_id>1</wagon_id><temperature>%d</temperature><timestamp>%lu</timestamp></sensor_data>", node_id, value, tv.tv_sec);
+			sprintf(app_buffer, "<?xml version='1.0' encoding='UTF-8' ?><sensor_data><node_id>%d</node_id><wagon_id>1</wagon_id><temperature>%d</temperature><timestamp>%lu</timestamp></sensor_data>", node_id, value, (long unsigned int)tv.tv_sec);
 		
 			mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer,
                strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
@@ -297,7 +315,12 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
 		}
 
 		etimer_set(&periodic_timer, DEFAULT_PUBLISH_INTERVAL);
-      
+    
+    }
+    else if (ev == button_hal_press_event){
+      printf("anomaly situation\n");
+      anomaly = true;
+       ctimer_set(&anomaly_timer, DEFAULT_PUBLISH_INTERVAL * 5,callback_ctimer, NULL);	
     }
 
   }

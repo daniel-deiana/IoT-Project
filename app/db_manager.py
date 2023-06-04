@@ -14,7 +14,7 @@ class dbManager:
     def get_actuator_ip(self,sensor_id,atype):
         database = Database()
         database.connect_db()
-        querystring = " SELECT A.ip_address, A.state  FROM actuator A inner join wagon W on W.wagon_id = A.wagon INNER JOIN sensor_data D on D.wagon = W.wagon_id WHERE D.sensor_id = %s and A.type = %s;"
+        querystring = " SELECT A.ip_address, A.state  FROM actuator A inner join wagon W on W.wagon_id = A.wagon INNER JOIN sensor_data D on D.wagon = W.wagon_id WHERE D.wagon = %s and A.type = %s;"
         result = database.execute_query(querystring,(sensor_id,atype),0)
         return result
 

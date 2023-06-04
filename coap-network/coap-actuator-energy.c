@@ -33,6 +33,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "net/ipv6/uip-icmp6.h"
+#include "net/ipv6/sicslowpan.h"
+#include "net/ipv6/uip.h"
+#include "net/ipv6/uip-ds6.h"
+#include "net/ipv6/uip-debug.h"
+#include "dev/leds.h"
 #include "contiki.h"
 #include "coap-engine.h"
 
@@ -41,6 +47,7 @@
 #define LOG_MODULE "App"
 #define LOG_LEVEL LOG_LEVEL_APP
 
+
 /* Declare and auto-start this file's process */
 PROCESS(coap_energy_actuator, "Backup energy source actuator");
 AUTOSTART_PROCESSES(&coap_energy_actuator);
@@ -48,8 +55,10 @@ extern coap_resource_t res_energy;
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(coap_energy_actuator, ev, data){
   PROCESS_BEGIN();
-
+  leds_set(LEDS_RED);// initial led state
+  //set_global_address();
   LOG_INFO("Coap Backup energy Actuator started\n");
   coap_activate_resource(&res_energy, "energy");
   PROCESS_END();
 }
+

@@ -135,6 +135,7 @@ static int generate_random_consumption(){
   return (rand() % (MAX_CONS - MIN_CONS)) + MIN_CONS;
 }
 
+
 static int PUBLISH_INTERVAL = DEFAULT_PUBLISH_INTERVAL;
 void parseAndConvert(const uint8_t* data, size_t dataSize, char* outputString, size_t outputSize) {
     size_t i;
@@ -150,11 +151,12 @@ pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk,
   printf("Pub Handler: topic='%s' (len=%u), chunk_len=%u\n", topic,
           topic_len, chunk_len);
 
+  
   if(strcmp(topic, "1/consumption/frequency") == 0) {
     char str[25] = "";
-    parseAndConvert(chunk, (size_t)chunk_len, str, 25);
+    parseAndConvert(chunk, (size_t)chunk_len, str, 64);
     int frequency = 0;
-    sscanf(str,"{frequency :%d}", &frequency);
+    sscanf(str,"<frequency> %d </frequency>", &frequency);
     printf("la stringa e %s",str);
 
     if (frequency >= MIN_FREQ && frequency <= MAX_FREQ){
@@ -162,7 +164,7 @@ pub_handler(const char *topic, uint16_t topic_len, const uint8_t *chunk,
       printf("cambiata la frequenza in %d\n",PUBLISH_INTERVAL);
       }
     else 
-      printf("Valori errati\n");
+      printf("Valori errati per la frequenza \n");
 
     return;
   }
@@ -300,13 +302,13 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
       // Publish something
       sprintf(pub_topic, "%s", "consumption");
       
-      if (value >= MIN_CONS)
-        value = generate_random_consumption();
+     
+      value = generate_random_consumption();
 
       struct timeval tv;
       gettimeofday(&tv,NULL);
-      sprintf(app_buffer, "<?xml version='1.0' encoding='UTF-8' ?><sensor_data><node_id>%d</node_id><wagon_id>1</wagon_id><consumption>%d</consumption><timestamp>%lu</timestamp></sensor_data>", node_id, value,tv.tv_sec);
-    
+      sprintf(app_buffer, "<?xml version='1.0' encoding='UTF-8' ?><sensor_data><node_id>%d</node_id><wagon_id>1</wagon_id><consumption>%d</consumption><timestamp>%lu</timestamp></sensor_data>", node_id, value,(long unsigned int)tv.tv_sec);
+      printf("ciao\n");
       mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer,
                strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);
     
@@ -319,6 +321,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
     etimer_set(&periodic_timer,PUBLISH_INTERVAL);
       
     }
+
 
   }
   PROCESS_END();

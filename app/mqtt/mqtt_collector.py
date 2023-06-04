@@ -17,7 +17,7 @@ from coap.remote_controller import coapActuatorHandler
 def change_cons_sensing_freq(wagon,freq):
     client = mqtt.Client()
     client.connect("fd00::1", 1883, 60)
-    msg = "{frequency :" + str(freq) + "}"
+    msg = "<frequency> " + str(freq) + " </frequency>"
     client.publish(wagon+"/consumption/frequency",msg)
 
 
@@ -37,10 +37,9 @@ def on_message_consumption(client, userdata, msg):
     cons = int(myxml[2].text)
     timestamp = int(myxml[3].text)
 
-    db.store_sensor_data(node,"consumption",cons,timestamp)
-    result = db.get_actuator_ip(2,"energy")
+    #this could be optimized caching the values in some structure like a list or a dictionary
+    result = db.get_actuator_ip(wagon,"energy")
     thresholds = db.get_wagon_thresholds(wagon)
-    # print("mqttOnMessage - ip address of actuator is:" + str(result))
     coap_handler = coapActuatorHandler("energy")
     if (cons > thresholds["max_consumption"] and result["state"] != "backup"):
         command = "open"
@@ -50,10 +49,11 @@ def on_message_consumption(client, userdata, msg):
         new_state = "standard"
     else:
         return  
-    # Send command to actuator  
+    # Send command to actuator
     cmdstring = "<?xml version='1.0' encoding='UTF-8'?><cmd> " + command + " </cmd>" 
     response = coap_handler.cooling_actuator_send(result["ip_address"],cmdstring)
     db.set_actuator_state(result["ip_address"],new_state)
+    db.store_sensor_data(node,"consumption",cons,timestamp)
 
 
 # The callback for when the client receives a CONNACK response from the server.
@@ -74,9 +74,10 @@ def on_message_temp(client, userdata, msg):
     temp = int(myxml[2].text)
     timestamp = int(myxml[3].text)
     #Store in database
-    db.store_sensor_data(node,"brake_temperature",temp,timestamp)
     #Retrieve Actuator address and current state
-    result = db.get_actuator_ip(node,"brakes")
+
+    #this could be optimized caching the values in some structure like a list or a dictionary
+    result = db.get_actuator_ip(wagon,"brakes")
     thresholds = db.get_wagon_thresholds(wagon)
     print("mqttOnMessage - ip address of actuator is:" + str(result))
     coap_handler = coapActuatorHandler("cooling")
@@ -94,19 +95,20 @@ def on_message_temp(client, userdata, msg):
     cmdstring = "<?xml version='1.0' encoding='UTF-8' ?><cmd> "+command+" </cmd>"
     response = coap_handler.cooling_actuator_send(result["ip_address"],cmdstring)
     db.set_actuator_state(result["ip_address"],new_state)
+    db.store_sensor_data(node,"brake_temperature",temp,timestamp)
 
 def mqtt_client_co():
     client_co = mqtt.Client()
     client_co.on_connect = on_connect_consumption
     client_co.on_message = on_message_consumption
-    client_co.connect("fd00::1", 1883, 60)
+    client_co.connect("fd00::f6ce:36bd:4f05:c3a3", 1883, 60)
     client_co.loop_forever()
 
 def mqtt_client_temp():
     client_temp = mqtt.Client()
     client_temp.on_connect = on_connect_temp
     client_temp.on_message = on_message_temp
-    client_temp.connect("fd00::1", 1883, 60)
+    client_temp.connect("fd00::f6ce:36bd:4f05:c3a3", 1883, 60)
     client_temp.loop_forever()
 
 if __name__ == "__main__":
