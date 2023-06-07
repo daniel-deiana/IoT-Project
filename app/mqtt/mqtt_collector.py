@@ -101,14 +101,14 @@ def mqtt_client_co():
     client_co = mqtt.Client()
     client_co.on_connect = on_connect_consumption
     client_co.on_message = on_message_consumption
-    client_co.connect("fd00::f6ce:36bd:4f05:c3a3", 1883, 60)
+    client_co.connect("fd00::1", 1883, 60)
     client_co.loop_forever()
 
 def mqtt_client_temp():
     client_temp = mqtt.Client()
     client_temp.on_connect = on_connect_temp
     client_temp.on_message = on_message_temp
-    client_temp.connect("fd00::f6ce:36bd:4f05:c3a3", 1883, 60)
+    client_temp.connect("fd00::1", 1883, 60)
     client_temp.loop_forever()
 
 if __name__ == "__main__":

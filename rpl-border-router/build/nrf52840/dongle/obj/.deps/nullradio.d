@@ -1,0 +1,8 @@
+build/nrf52840/dongle/obj/nullradio.o: ../../../os/dev/nullradio.c \
+ ../../../os/services/rpl-border-router/module-macros.h \
+ ../../../os/net/app-layer/coap/module-macros.h \
+ ../../../os/dev/nullradio.h ../../../os/dev/radio.h
+../../../os/services/rpl-border-router/module-macros.h:
+../../../os/net/app-layer/coap/module-macros.h:
+../../../os/dev/nullradio.h:
+../../../os/dev/radio.h:

@@ -62,13 +62,13 @@
 
 /*---------------------------------------------------------------------------*/
 /* MQTT broker address. */
-#define MQTT_CLIENT_BROKER_IP_ADDR "fd00::f6ce:36bd:4f05:c3a3"
+#define MQTT_CLIENT_BROKER_IP_ADDR "fd00::1"
 
 static const char *broker_ip = MQTT_CLIENT_BROKER_IP_ADDR;
 
 // Defaukt config values
 #define DEFAULT_BROKER_PORT         1883
-#define DEFAULT_PUBLISH_INTERVAL    (30 * CLOCK_SECOND)
+#define DEFAULT_PUBLISH_INTERVAL    (5 * CLOCK_SECOND)
 
 
 // We assume that the broker does not require authentication
@@ -301,9 +301,8 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
       else 
         value = generate_anomaly();
 
-      struct timeval tv;
-      gettimeofday(&tv,NULL);
-			sprintf(app_buffer, "<?xml version='1.0' encoding='UTF-8' ?><sensor_data><node_id>%d</node_id><wagon_id>1</wagon_id><temperature>%d</temperature><timestamp>%lu</timestamp></sensor_data>", node_id, value, (long unsigned int)tv.tv_sec);
+    
+			sprintf(app_buffer, "<?xml version='1.0' encoding='UTF-8' ?><sensor_data><node_id>%d</node_id><wagon_id>1</wagon_id><temperature>%d</temperature><timestamp>%d</timestamp></sensor_data>", node_id, value, (int)time(NULL));
 		
 			mqtt_publish(&conn, NULL, pub_topic, (uint8_t *)app_buffer,
                strlen(app_buffer), MQTT_QOS_LEVEL_0, MQTT_RETAIN_OFF);

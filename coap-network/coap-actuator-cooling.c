@@ -45,20 +45,7 @@
 #define LOG_MODULE "App"
 #define LOG_LEVEL LOG_LEVEL_APP
 
-static void print_addresses(){
 
-
-  int i;
-  uint8_t state;
-  printf("IPv6 addresses: ");
-  for(i = 0; i < UIP_DS6_ADDR_NB; i++) {
-    state = uip_ds6_if.addr_list[i].state;
-    if(uip_ds6_if.addr_list[i].isused && (state == ADDR_TENTATIVE || state == ADDR_PREFERRED)) {
-      uip_debug_ipaddr_print(&uip_ds6_if.addr_list[i].ipaddr);
-      printf("\n");
-    }
-  }
-}
 /* Declare and auto-start this file's process */
 PROCESS(coap_cooling_actuator, "Coap Cooling Actuator");
 AUTOSTART_PROCESSES(&coap_cooling_actuator);
@@ -67,9 +54,6 @@ extern coap_resource_t res_cooling;
 PROCESS_THREAD(coap_cooling_actuator, ev, data){
   PROCESS_BEGIN();
   leds_set(LEDS_RED);// initial led state
-  while(1){
-    print_addresses();
-  }
   LOG_INFO("Coap Brake cooling Actuator started\n");
   coap_activate_resource(&res_cooling, "cooling");
   PROCESS_END();
